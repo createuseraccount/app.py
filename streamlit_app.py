@@ -12,30 +12,40 @@ def extract_data_from_pdf(pdf_path):
             st.code(text)  # Display the text for debugging
             if text:
                 for line in text.split("\n"):
-                    # Adjust this part based on your statement's format
                     if is_transaction_line(line):
-                        transactions.append(parse_transaction(line))
+                        transaction = parse_transaction(line)
+                        if transaction:
+                            transactions.append(transaction)
     return transactions
 
 def is_transaction_line(line):
     """Identify if a line contains transaction data. Adjust based on PDF structure."""
     import re
-    # Example: Look for lines with a specific pattern (date, description, amount)
-    return bool(re.match(r"\d{2}/\d{2}/\d{4}.*\d+\.\d{2}$", line))
+    # Adjust regex to match ICICI credit card transaction lines (date pattern + amount)
+    # Example: "02/12/2024 DESCRIPTION 1,234.56"
+    return bool(re.match(r"\d{2}/\d{2}/\d{4}.*\d{1,3}(,\d{3})*(\.\d{2})?$", line))
 
 def parse_transaction(line):
     """Parse a line of transaction data into a structured format."""
-    # Example: Split into date, description, and amount
-    parts = line.split()
-    date = parts[0]
-    amount = parts[-1]
-    description = " ".join(parts[1:-1])
-    return {"Date": date, "Description": description, "Amount": amount}
+    import re
+    try:
+        # Split the line into date, description, and amount based on known format
+        parts = re.split(r"\s{2,}", line)  # Split on multiple spaces (ICICI's format)
+        date = parts[0]
+        amount = parts[-1].replace(",", "")  # Remove commas from amount
+        description = " ".join(parts[1:-1])  # Combine the middle parts as description
+        return {"Date": date, "Description": description, "Amount": float(amount)}
+    except (IndexError, ValueError):
+        # Handle unexpected line formats gracefully
+        return None
 
 def export_to_excel(transactions):
     """Export the extracted transactions to an Excel file."""
     df = pd.DataFrame(transactions)
-    return df.to_excel(index=False, engine="openpyxl")
+    output = pd.ExcelWriter("transactions.xlsx", engine="openpyxl")
+    df.to_excel(output, index=False)
+    output.seek(0)
+    return output.getvalue()
 
 def main():
     st.title("Credit Card Statement Parser")
