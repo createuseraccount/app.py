@@ -6,8 +6,10 @@ def extract_data_from_pdf(pdf_path):
     """Extract text or table data from the PDF file."""
     transactions = []
     with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
+        for page_num, page in enumerate(pdf.pages, start=1):
             text = page.extract_text()
+            st.write(f"Page {page_num} Text:")
+            st.code(text)  # Display the text for debugging
             if text:
                 for line in text.split("\n"):
                     # Adjust this part based on your statement's format
